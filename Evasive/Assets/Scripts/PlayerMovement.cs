@@ -1,19 +1,23 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using System.Collections;
 
 public class PlayerMovement : MonoBehaviour
 {
     [Header("Speeds Params")]
     public float runSpeed = 10f;
     public float walkSpeed = 5f;
+    public float croachSpeed = 2.5f;
 
     [Header("Params")]
     public float jumpForce = 5f;
+    public float croachY = 0.7f;
 
     [Header("References")]
     public InputActionReference jump;
     public InputActionReference run;
     public InputActionReference move;
+    public InputActionReference croach;
     public Ground isGround;
 
     private Rigidbody rb;
@@ -21,6 +25,7 @@ public class PlayerMovement : MonoBehaviour
     private float speed;
 
     private bool _isRuning = false;
+    private bool _isCroach = false;
     private bool _isGround = false;
 
     void Awake()
@@ -35,6 +40,9 @@ public class PlayerMovement : MonoBehaviour
 
         run.action.started += RunHandler;
         run.action.canceled += RunHandler;
+
+        croach.action.started += CroachHandler;
+        croach.action.canceled += CroachHandler;
 
         jump.action.Enable();
         jump.action.started += JumpHandler;
@@ -68,7 +76,7 @@ public class PlayerMovement : MonoBehaviour
 
     void RunHandler(InputAction.CallbackContext ctx)
     {
-        if (ctx.started)
+        if (ctx.started && !_isCroach)
         {
             speed = runSpeed;
             _isRuning = true;
@@ -77,6 +85,35 @@ public class PlayerMovement : MonoBehaviour
         {
             speed = walkSpeed;
             _isRuning = false;
+        }
+    }
+
+    void CroachHandler(InputAction.CallbackContext ctx)
+    {
+        if (ctx.started)
+        {
+            _isRuning = false;
+            speed = croachSpeed;
+
+            float bottomY = transform.position.y - (transform.localScale.y / 2f);
+
+            Vector3 scale = transform.localScale;
+            scale.y = croachY;
+            transform.localScale = scale;
+
+            Vector3 pos = transform.position;
+            pos.y = bottomY + (transform.localScale.y / 2f);
+            transform.position = pos;
+
+            _isCroach = true;
+        }
+        else if (ctx.canceled)
+        {
+            speed = walkSpeed;
+            Vector3 scale = transform.localScale;
+            scale.y = 1f;
+            transform.localScale = scale;
+            _isCroach = false;
         }
     }
 
