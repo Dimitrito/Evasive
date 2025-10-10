@@ -1,19 +1,23 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using System.Collections;
 
 public class PlayerMovement : MonoBehaviour
 {
     [Header("Speeds Params")]
     public float runSpeed = 10f;
     public float walkSpeed = 5f;
+    public float croachSpeed = 2.5f;
 
     [Header("Params")]
     public float jumpForce = 5f;
+    public float croachY = 0.7f;
 
     [Header("References")]
     public InputActionReference jump;
     public InputActionReference run;
     public InputActionReference move;
+    public InputActionReference croach;
     public Ground isGround;
 
     private Rigidbody rb;
@@ -21,7 +25,11 @@ public class PlayerMovement : MonoBehaviour
     private float speed;
 
     private bool _isRuning = false;
+    private bool _isCroach = false;
     private bool _isGround = false;
+
+    private bool _isOnLadder = false;
+    private float _ladderSpeed = 0f;
 
     void Awake()
     {
@@ -35,6 +43,9 @@ public class PlayerMovement : MonoBehaviour
 
         run.action.started += RunHandler;
         run.action.canceled += RunHandler;
+
+        croach.action.started += CroachHandler;
+        croach.action.canceled += CroachHandler;
 
         jump.action.Enable();
         jump.action.started += JumpHandler;
@@ -52,6 +63,21 @@ public class PlayerMovement : MonoBehaviour
 
     void FixedUpdate()
     {
+        if (_isOnLadder)
+        {
+            moveInput = move.action.ReadValue<Vector2>();
+
+            Vector3 climbDir = new Vector3(0f, moveInput.y, 0f);
+            rb.linearVelocity = climbDir * _ladderSpeed;
+
+            rb.useGravity = false;
+            return;
+        }
+        else
+        {
+            rb.useGravity = true;
+        }
+
         Vector3 moveDir = new Vector3(moveInput.x, 0f, moveInput.y);
         Vector3 targetPos = rb.position + transform.TransformDirection(moveDir) * speed * Time.fixedDeltaTime;
 
@@ -68,7 +94,7 @@ public class PlayerMovement : MonoBehaviour
 
     void RunHandler(InputAction.CallbackContext ctx)
     {
-        if (ctx.started)
+        if (ctx.started && !_isCroach)
         {
             speed = runSpeed;
             _isRuning = true;
@@ -80,8 +106,47 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
+    void CroachHandler(InputAction.CallbackContext ctx)
+    {
+        if (ctx.started)
+        {
+            _isRuning = false;
+            speed = croachSpeed;
+
+            float bottomY = transform.position.y - (transform.localScale.y / 2f);
+
+            Vector3 scale = transform.localScale;
+            scale.y = croachY;
+            transform.localScale = scale;
+
+            Vector3 pos = transform.position;
+            pos.y = bottomY + (transform.localScale.y / 2f);
+            transform.position = pos;
+
+            _isCroach = true;
+        }
+        else if (ctx.canceled)
+        {
+            speed = walkSpeed;
+            Vector3 scale = transform.localScale;
+            scale.y = 1f;
+            transform.localScale = scale;
+            _isCroach = false;
+        }
+    }
+
     void UpdateGround(bool isGround)
     {
         _isGround = isGround;
     }
+
+    public void SetOnLadder(bool value, float climbSpeed)
+    {
+        _isOnLadder = value;
+        _ladderSpeed = climbSpeed;
+
+        if (!value)
+            rb.useGravity = true;
+    }
+
 }
